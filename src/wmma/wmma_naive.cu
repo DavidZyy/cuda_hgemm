@@ -35,7 +35,7 @@ __global__ void wmmaNaiveKernel(const half *__restrict__ A, const half *__restri
         wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> B_frag;
 
         wmma::load_matrix_sync(A_frag, A + warp_row * K + i * WMMA_K, K);
-        wmma::load_matrix_sync(B_frag, B + i * WMMA_K + warp_col * K, K);
+        wmma::load_matrix_sync(B_frag, B + i * WMMA_K + warp_col * K, K); // because matrix B is col-major, so index is this ...
 
         wmma::mma_sync(C_frag, A_frag, B_frag, C_frag);
     }

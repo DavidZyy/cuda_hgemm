@@ -1,0 +1,2 @@
+-I./src/common
+-I/usr/local/cuda/include

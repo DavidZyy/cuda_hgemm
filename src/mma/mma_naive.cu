@@ -12,6 +12,7 @@
 
 #define WARP_SIZE 32
 
+// see: https://zhuanlan.zhihu.com/p/650374808
 __global__ void mmaNaiveKernel(const half *__restrict__ A, const half *__restrict__ B, half *__restrict__ C, size_t M,
                                size_t N, size_t K) {
     const size_t K_tiles = div_ceil(K, MMA_K);
@@ -23,9 +24,9 @@ __global__ void mmaNaiveKernel(const half *__restrict__ A, const half *__restric
         return;
     }
 
-    __shared__ half A_smem[MMA_M][MMA_K];
-    __shared__ half B_smem[MMA_N][MMA_K];
-    __shared__ half C_smem[MMA_M][MMA_N];
+    __shared__ half A_smem[MMA_M][MMA_K]; // 16 * 16 = 256 half, a warp have 32 threads, each threads handle 8 half = 4 float = 4 int = 1 int4
+    __shared__ half B_smem[MMA_N][MMA_K]; // 8  * 16 = 128 half, a warp have 32 threads, each threads handle 4 half = 2 float = 2 int = 0.5 int4
+    __shared__ half C_smem[MMA_M][MMA_N]; // 16 * 8  = 128 half, a warp have 32 threads, each threads handle 4 half = 2 float = 2 int = 0.5 int4
 
     const size_t lane_id = threadIdx.x % WARP_SIZE;
 
@@ -43,6 +44,7 @@ __global__ void mmaNaiveKernel(const half *__restrict__ A, const half *__restric
 
         __syncthreads();
 
+        // see https://docs.nvidia.com/cuda/parallel-thread-execution/#matrix-fragments-for-mma-m16n8k16-with-floating-point-type for register organization
         uint32_t RA[4];
         uint32_t RB[2];
 
@@ -56,7 +58,7 @@ __global__ void mmaNaiveKernel(const half *__restrict__ A, const half *__restric
 
         __syncthreads();
     }
-
+    // see: https://pica.zhimg.com/v2-aef0a60b6976aeaeaa922151232d7b8a_1440w.jpg
     *((uint32_t *)(&C_smem[lane_id / 4][0]) + lane_id % 4) = RC[0];
     *((uint32_t *)(&C_smem[lane_id / 4 + 8][0]) + lane_id % 4) = RC[1];
 
